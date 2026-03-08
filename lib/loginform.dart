@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:rive/rive.dart';
 import 'package:rivelogin/profilelist.dart';
 import 'package:rivelogin/registration.dart';
@@ -40,12 +44,54 @@ class LoginFormState extends State<LoginForm> {
     _controller?.stateMachine.number('numLook')?.value = val.length.toDouble();
   }
 
+
   @override
   void dispose() {
     _controller?.dispose();
     fileLoader.dispose();
     super.dispose();
   }
+
+
+  Future<void> loginCheck(BuildContext context) async {
+    final String mainurl = "https://web.bexova.com/api/login";
+    final Map<String,dynamic> data = {
+      "username":_emailController.text,
+      "password":_passwordController.text
+    };
+
+    final response = await http.post(Uri.parse(mainurl),body: jsonEncode(data),headers: {'content-type':'application/json'});
+    log(response.statusCode.toString());
+
+    if(response.statusCode == 200){
+
+      log("Inside status code 200");
+      final Map<String,dynamic> data = jsonDecode(response.body);
+
+      log(data.toString());
+
+      if(data["message"]=="success"){
+
+        log(data["message"]);
+        _loginTriggers(true);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data["message"])));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) {
+          return Profilelist();
+        },));
+      }else{
+        log(data["message"]);
+        _loginTriggers(false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data["message"])));
+      }
+
+    }else{
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data["message"])));
+    }
+
+  }
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -113,9 +159,9 @@ class LoginFormState extends State<LoginForm> {
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          hint: Text("Enter emil ID"),
+                          hint: Text("Enter User name"),
                           errorStyle: TextStyle(color: Colors.red.shade100,fontSize: 14),
-                          labelText: "Enter your login ID",
+                          labelText: "Enter your User Name",
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.all(Radius.circular(20)),
                           ),
@@ -181,15 +227,7 @@ class LoginFormState extends State<LoginForm> {
                               print('Password: "${_passwordController.text}"');
                               _setHandsUp(false);
                               if(_formKey.currentState!.validate()) {
-                                if (_emailController.text == "abc" &&
-                                    _passwordController.text == "abc") {
-                                  _loginTriggers(true);
-                                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) {
-                                    return Profilelist();
-                                  },));
-                                } else {
-                                  _loginTriggers(false);
-                                }
+                                loginCheck(context);
                               }
                             },
                             child: const Text("Login"),
@@ -215,7 +253,7 @@ class LoginFormState extends State<LoginForm> {
             const SizedBox(width: 10,),
             InkWell(
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder:(context) => RegistationScreen(),)
+                  Navigator.push(context, MaterialPageRoute(builder:(context) => RegistrationScreen(),)
                   );
                 },
                 child: const Text("Sign up")
